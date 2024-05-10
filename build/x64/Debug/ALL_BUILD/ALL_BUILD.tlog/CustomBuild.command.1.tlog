@@ -1,0 +1,10 @@
+^C:\USERS\DIOGO\DESKTOP\PROJECTS\VC_T2_22531_22999_23000\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000 -BC:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000/build --check-stamp-file C:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

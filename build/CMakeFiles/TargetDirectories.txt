@@ -1,0 +1,3 @@
+C:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000/build/CMakeFiles/vc_project.dir
+C:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/diogo/Desktop/projects/vc_t2_22531_22999_23000/build/CMakeFiles/ZERO_CHECK.dir

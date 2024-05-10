@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\diogo\Desktop\projects\vc_t2_22531_22999_23000\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\diogo\Desktop\projects\vc_t2_22531_22999_23000\vc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\diogo\Desktop\projects\vc_t2_22531_22999_23000\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{2675B312-724C-30EE-943F-3F782415F5DE}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
