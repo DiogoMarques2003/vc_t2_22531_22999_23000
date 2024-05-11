@@ -1,6 +1,14 @@
 {
     "files.associations": {
         "*.rmd": "markdown",
-        "xlocmes": "cpp"
+        "xlocmes": "cpp",
+        "chrono": "c",
+        "ranges": "c",
+        "array": "c",
+        "span": "c",
+        "vector": "c",
+        "xstring": "c",
+        "xutility": "c",
+        "xiosbase": "c"
     }
 }

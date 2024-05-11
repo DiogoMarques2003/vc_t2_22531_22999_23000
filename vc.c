@@ -1545,3 +1545,36 @@ int vc_gray_histogram_equalization(IVC *src, IVC *dst) {
 
     return 0;
 }
+
+int vc_convert_bgr_to_rgb(IVC *src, IVC *dst) {
+    unsigned char *datasrc = (unsigned char*) src->data;
+    int channels_src = src->channels;
+    int bytesperline_src = src->bytesperline;
+    unsigned char *datadst = (unsigned  char*) dst->data;
+    int width = src->width;
+    int height = src->height;
+    int x;
+    float rf, gf, bf;
+    float max, min, delta;
+    float h, s, v;
+    long int pos;
+
+    //Verificação de erros
+    if ((src->width <= 0) || (src->height <= 0) || (src->data == NULL)) return 0;
+    if ((src->width != dst->width) || (src->height != dst->height)) return 0;
+    if ((src->channels != 3) || (dst->channels != 3)) return 0;
+
+    // Copiar a data da src para a dst
+    memcpy(datadst, datasrc, bytesperline_src * height);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            pos = y * bytesperline_src + x * channels_src;
+            unsigned char blue = datadst[pos];
+            datadst[pos] = datadst[pos + 2]; // Azul recebe o valor de Vermelho
+            datadst[pos + 2] = blue; // Vermelho recebe o valor de Azul
+        }
+    }
+
+    return 0;
+}

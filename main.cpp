@@ -105,18 +105,40 @@ int main(void) {
 
 
 		// Fa�a o seu c�digo aqui...
-		/*
 		// Cria uma nova imagem IVC
-		IVC *image = vc_image_new(video.width, video.height, 3, 255);
+		IVC *imageOutput = vc_image_new(video.width, video.height, 3, 255);
 		// Copia dados de imagem da estrutura cv::Mat para uma estrutura IVC
-		memcpy(image->data, frame.data, video.width * video.height * 3);
-		// Executa uma fun��o da nossa biblioteca vc
-		vc_rgb_get_green(image);
+		memcpy(imageOutput->data, frame.data, video.width * video.height * 3);
+
+		// Converter a imagem de bgr para rgb
+		IVC *imageRGB = vc_image_new(imageOutput->width, imageOutput->height, 3, 255);
+		vc_convert_bgr_to_rgb(imageOutput, imageRGB);
+
+		// Segmentar a imagem pela cor das resistencias
+		IVC *imageSegmented = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 45, 40, 100, 45, 100);
+
+		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
+		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		vc_binary_dilate(imageSegmented, imageClosed, 5);
+
+
+		// Apenas debug para conseguir ver a imagem a preto e branco
+		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
+        for (int y = 0; y < imageClosed->height; y++) {
+            for (int x = 0; x < imageClosed->width; x++) {
+                uchar value = imageClosed->data[y * imageClosed->width + x];
+                imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
+            }
+        }
+
 		// Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
-		memcpy(frame.data, image->data, video.width * video.height * 3);
-		// Liberta a mem�ria da imagem IVC que havia sido criada
-		vc_image_free(image);
-		*/
+		memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
+		// Libertar a memoria das imagens IVC
+		vc_image_free(imageOutput);
+		vc_image_free(imageRGB);
+		vc_image_free(imageSegmented);
+		vc_image_free(imageClosed);
 		// +++++++++++++++++++++++++
 
 		/* Exibe a frame */

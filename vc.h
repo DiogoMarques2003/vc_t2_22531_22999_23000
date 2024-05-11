@@ -109,3 +109,6 @@ int vc_draw_bounding_box(IVC *img, OVC *blob);
 
 int vc_gray_histogram_show(IVC *src, IVC *dst);
 int vc_gray_histogram_equalization(IVC *src, IVC *dst);
+
+//converter bgr para rgb
+int vc_convert_bgr_to_rgb(IVC *src, IVC *dst);
