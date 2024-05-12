@@ -143,10 +143,13 @@ int main(void) {
 				}
 
 				// Desenhar o centro de gravidade
-				vc_draw_center_of_gravity(imageOutput, &blobs[i], 1);
+				vc_draw_center_of_gravity(imageOutput, &blobs[i], 5);
 				// Desenhar o bounding box
 				vc_draw_bounding_box(imageOutput, &blobs[i]);
 			}
+
+			// Libertar a memoria dos blobs
+			free(blobs);
 		}
 
 		// Apenas debug para conseguir ver a imagem a preto e branco

@@ -1403,40 +1403,44 @@ int vc_blob_to_gray_rgb(IVC *src, IVC *dst, int nlabels) {
 }
 
 int vc_draw_center_of_gravity(IVC *img, OVC *blob, int comp) {
-    int c;
     int x, y;
 
     for (x = blob->xc - comp; x <= blob->xc + comp; x++) {
-        for (c = 0; c < img->channels; c++) {
-            img->data[blob->yc * img->bytesperline + x * img->channels + c] = 0;
-        }
+        img->data[blob->yc * img->bytesperline + x * img->channels] = 0;
+        img->data[blob->yc * img->bytesperline + x * img->channels + 1] = 255;
+        img->data[blob->yc * img->bytesperline + x * img->channels + 2] = 0;
     }
 
     for (y = blob->yc - comp; y <= blob->yc + comp; y++) {
-        for (c = 0; c < img->channels; c++) {
-            img->data[y * img->bytesperline + blob->xc * img->channels + c] = 0;
-        }
+        img->data[y * img->bytesperline + blob->xc * img->channels] = 0;
+        img->data[y * img->bytesperline + blob->xc * img->channels + 1] = 255;
+        img->data[y * img->bytesperline + blob->xc * img->channels + 2] = 0;
     }
 
     return 1;
 }
 
 int vc_draw_bounding_box(IVC *img, OVC *blob) {
-    int c;
     int x, y;
 
     for(y = blob->y; y < blob->y + blob->height; y++) {
-        for (c = 0; c < img->channels; c++) {
-            img->data[y * img->bytesperline + blob->x * img->channels + c] = 255;
-            img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels + c] = 255;
-        }
+        img->data[y * img->bytesperline + blob->x * img->channels] = 0;
+        img->data[y * img->bytesperline + blob->x * img->channels + 1] = 255;
+        img->data[y * img->bytesperline + blob->x * img->channels + 2] = 0;
+
+        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels] = 0;
+        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels + 1] = 255;
+        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels + 2] = 0;
     }
 
     for (x = blob->x; x < blob->x + blob->width; x++) {
-        for (c = 0; c < img->channels; c++) {
-            img->data[blob->y * img->bytesperline + x * img->channels + c] = 255;
-            img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels + c] = 255;
-        }
+        img->data[blob->y * img->bytesperline + x * img->channels] = 0;
+        img->data[blob->y * img->bytesperline + x * img->channels + 1] = 255;
+        img->data[blob->y * img->bytesperline + x * img->channels + 2] = 0;
+
+        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels] = 0;
+        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels + 1] = 255;
+        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels + 2] = 0;
     }
 
     return 0;
@@ -1550,10 +1554,6 @@ int vc_convert_bgr_to_rgb(IVC *src, IVC *dst) {
     unsigned char *datadst = (unsigned  char*) dst->data;
     int width = src->width;
     int height = src->height;
-    int x;
-    float rf, gf, bf;
-    float max, min, delta;
-    float h, s, v;
     long int pos;
 
     //Verificação de erros
