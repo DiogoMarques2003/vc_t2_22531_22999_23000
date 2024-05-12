@@ -116,7 +116,7 @@ int main(void) {
 
 		// Segmentar a imagem pela cor das resistencias
 		IVC *imageSegmented = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 45, 40, 100, 45, 100);
+		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100);
 
 		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
 		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
@@ -137,8 +137,8 @@ int main(void) {
 
 			// Peercorrer os blobs
 			for (int i = 0; i < nblobs; i++) {
-				// Se o blob estiver a menos de 10% do inicio e fim da imagem ignorar para garantir que a resitencia esta toda na imagem
-				if (blobs[i].x < 0.2 * imageBlobs->width || blobs[i].x > 0.8 * imageBlobs->width) {
+				// Se o blob estiver a menos de 1% do inicio e 10% fim da imagem ignorar para garantir que a resitencia esta toda na imagem
+				if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
 					continue;
 				}
 
@@ -152,14 +152,14 @@ int main(void) {
 			free(blobs);
 		}
 
-		// Apenas debug para conseguir ver a imagem a preto e branco
-		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
-        for (int y = 0; y < imageClosed->height; y++) {
-            for (int x = 0; x < imageClosed->width; x++) {
-                uchar value = imageClosed->data[y * imageClosed->width + x];
-                imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
-            }
-        }
+		// // Apenas debug para conseguir ver a imagem a preto e branco
+		// cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
+        // for (int y = 0; y < imageClosed->height; y++) {
+        //     for (int x = 0; x < imageClosed->width; x++) {
+        //         uchar value = imageClosed->data[y * imageClosed->width + x];
+        //         imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
+        //     }
+        // }
 
 		// Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
 		memcpy(frame.data, imageOutput->data, video.width * video.height * 3);
