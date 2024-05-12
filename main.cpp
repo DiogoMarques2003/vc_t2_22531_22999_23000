@@ -35,7 +35,7 @@ void vc_timer(void) {
 
 int main(void) {
 	// V�deo
-	char videofile[100] = "C:\\Users\\diogo\\Desktop\\projects\\vc_t2_22531_22999_23000\\video_resistors.mp4"; //Trocar para o caminho do video
+	char videofile[100] = "../../video_resistors.mp4"; //Trocar para o caminho do video
 	cv::VideoCapture capture;
 	struct
 	{
@@ -122,6 +122,33 @@ int main(void) {
 		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
 		vc_binary_close(imageSegmented, imageClosed, 5, 23);
 
+		//Obter os blobs das resistencias
+		int nblobs;
+    	OVC *blobs;
+		IVC *imageBlobs = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
+
+		// Se tiver encontrado blobs de resistencias
+		if (blobs != NULL) {
+			std::cerr << "Resistencias encontradas: " << nblobs << "\n";
+
+			// Obter informação dos blobs
+			vc_binary_blob_info(imageBlobs, blobs, nblobs);
+
+			// Peercorrer os blobs
+			for (int i = 0; i < nblobs; i++) {
+				// Se o blob estiver a menos de 10% do inicio e fim da imagem ignorar para garantir que a resitencia esta toda na imagem
+				if (blobs[i].x < 0.2 * imageBlobs->width || blobs[i].x > 0.8 * imageBlobs->width) {
+					continue;
+				}
+
+				// Desenhar o centro de gravidade
+				vc_draw_center_of_gravity(imageOutput, &blobs[i], 1);
+				// Desenhar o bounding box
+				vc_draw_bounding_box(imageOutput, &blobs[i]);
+			}
+		}
+
 		// Apenas debug para conseguir ver a imagem a preto e branco
 		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
         for (int y = 0; y < imageClosed->height; y++) {
@@ -132,12 +159,13 @@ int main(void) {
         }
 
 		// Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
-		memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
+		memcpy(frame.data, imageOutput->data, video.width * video.height * 3);
 		// Libertar a memoria das imagens IVC
 		vc_image_free(imageOutput);
 		vc_image_free(imageRGB);
 		vc_image_free(imageSegmented);
 		vc_image_free(imageClosed);
+		vc_image_free(imageBlobs);
 		// +++++++++++++++++++++++++
 
 		/* Exibe a frame */
