@@ -120,8 +120,7 @@ int main(void) {
 
 		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
 		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		vc_binary_dilate(imageSegmented, imageClosed, 5);
-
+		vc_binary_close(imageSegmented, imageClosed, 5, 23);
 
 		// Apenas debug para conseguir ver a imagem a preto e branco
 		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);

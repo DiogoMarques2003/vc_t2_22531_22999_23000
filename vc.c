@@ -963,35 +963,32 @@ int vc_binary_dilate(IVC *src, IVC *dst, int kernel){
     memcpy(datadst, datasrc, bytesperline * height);
 
     // Cálculo da dilatacao
-    for (y = 0; y<height; y++) {
-        for (x = 0; x<width; x++) {
-            pos = y * bytesperline + x * channels;
+    for (int y = 0; y < height; y++) {
+        int y_bytes = y * bytesperline; // indice da linha atual
+        for (int x = 0; x < width; x++) {
+            unsigned char pixel = 0; // Iniciar o pixel a ser processado
+            pos = y_bytes + x * channels; // Calcular a posição do pixel atual
 
-            pixel = datasrc[pos];
+            // Percorrer a vizinhança do pixel 
+            for (int yk = s1; yk <= s2; yk++) {
+                int j = y + yk; 
+                if (j < 0 || j >= height) continue; // Verificar se a linha está dentro dos limites da imagem
+                int j_bytes = j * bytesperline; 
 
-            for (yk = s1; yk <= s2; yk++) {
-                j = y + yk;
-
-                if ((j < 0) || (j >= height)) continue;
-
-                for (xk = s1; xk <= s2; xk++) {
-                    i = x + xk;
-
-                    if ((i < 0) || (i >= width)) continue;
-
-                    posk = j * bytesperline + i * channels;
-                    //aqui a unica diference entre erode ou dilate
-                    //se encontrar um pixel a branco mete o pixel central a branco
-
-                    pixel |= datasrc[posk];
+                for (int xk = s1; xk <= s2; xk++) {
+                    int i = x + xk;
+                    if (i < 0 || i >= width) continue; // Verificar se a coluna está dentro dos limites da imagem
+                    posk = j_bytes + i * channels; // Calcular a posição do pixel da vizinhança
+                    pixel |= datasrc[posk]; // Realizar dilatação binária ao fazer OR dos valores dos pixels
                 }
             }
 
-            // Se um qualquer pixel da vizinhança, na imagem de origem, for de plano de fundo, então o pixel central
-            // na imagem de destino é também definido como plano de fundo.
-            if (pixel == 255) datadst[pos] = 255;
+            // Definir o pixel na imagem de destino
+            // Apenas definir para 255 se algum pixel vizinho for 255, caso contrário manter o valor original
+            datadst[pos] = (pixel == 255) ? 255 : datadst[pos];
         }
     }
+
     return 1;
 }
 // Erosão binária
