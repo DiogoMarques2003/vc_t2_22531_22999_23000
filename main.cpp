@@ -132,8 +132,8 @@ int main(void) {
 		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100);
 
 		// Reconhecer as riscas das resistencias (hsv_values) e adicionar a imagem segmentada
+		IVC *imageTemp = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
 		for (int i = 0; i < sizeof(hsv_values) / sizeof(HSV); i++) {
-			IVC *imageTemp = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
 			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[i].hmin, hsv_values[i].hmax, hsv_values[i].smin, hsv_values[i].smax, hsv_values[i].vmin, hsv_values[i].vmax);
 			for (int y = 0; y < imageOutput->height; y++) {
 				for (int x = 0; x < imageOutput->width; x++) {
@@ -142,8 +142,8 @@ int main(void) {
 					}
 				}
 			}
-			vc_image_free(imageTemp);
 		}
+		vc_image_free(imageTemp);
 
 
 		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
