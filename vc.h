@@ -43,6 +43,16 @@ typedef struct {
     unsigned char blue;
 } RGB;
 
+// Estrutura para o min e max do hsv
+typedef struct {
+    int hmin;
+    int hmax;
+    int smin;
+    int smax;
+    int vmin;
+    int vmax;
+} HSV;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //                    Macros
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

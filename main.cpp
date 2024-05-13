@@ -10,6 +10,19 @@ extern "C" {
 #include "vc.h"
 }
 
+// Defenir array com os valores do HSV
+HSV hsv_values[10] = {
+    {0, 360, 0, 100, 0, 0}, // Preto -> 0
+    {0, 45, 50, 100, 10, 50}, // Castanho -> 1
+    {345, 15, 60, 100, 50, 100}, // Vermelho -> 2
+    {15, 45, 60, 100, 50, 100}, // Laranja -> 3
+    {45, 75, 60, 100, 50, 100}, // Amarelo -> 4
+    {75, 165, 60, 100, 20, 100}, // Verde -> 5
+    {165, 255, 60, 100, 20, 100}, // Azul -> 6
+    {255, 345, 60, 100, 20, 100}, // Roxo -> 7
+    {0, 360, 0, 0, 20, 80}, // Cinza -> 8
+    {0, 360, 0, 0, 100, 100} // Branco -> 9
+};
 
 void vc_timer(void) {
 	static bool running = false;
@@ -114,61 +127,77 @@ int main(void) {
 		IVC *imageRGB = vc_image_new(imageOutput->width, imageOutput->height, 3, 255);
 		vc_convert_bgr_to_rgb(imageOutput, imageRGB);
 
-		// Segmentar a imagem pela cor das resistencias
+		// Segmentar a imagem para obter o corpo das resistencias
 		IVC *imageSegmented = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
 		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100);
 
-		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
-		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		vc_binary_close(imageSegmented, imageClosed, 5, 23);
-
-		//Obter os blobs das resistencias
-		int nblobs;
-    	OVC *blobs;
-		IVC *imageBlobs = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
-
-		// Se tiver encontrado blobs de resistencias
-		if (blobs != NULL) {
-			std::cerr << "Resistencias encontradas: " << nblobs << "\n";
-
-			// Obter informação dos blobs
-			vc_binary_blob_info(imageBlobs, blobs, nblobs);
-
-			// Peercorrer os blobs
-			for (int i = 0; i < nblobs; i++) {
-				// Se o blob estiver a menos de 1% do inicio e 10% fim da imagem ignorar para garantir que a resitencia esta toda na imagem
-				if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
-					continue;
+		// Reconhecer as riscas das resistencias (hsv_values) e adicionar a imagem segmentada
+		for (int i = 0; i < sizeof(hsv_values) / sizeof(HSV); i++) {
+			IVC *imageTemp = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[i].hmin, hsv_values[i].hmax, hsv_values[i].smin, hsv_values[i].smax, hsv_values[i].vmin, hsv_values[i].vmax);
+			for (int y = 0; y < imageOutput->height; y++) {
+				for (int x = 0; x < imageOutput->width; x++) {
+					if (imageTemp->data[y * imageTemp->width + x] == 255) {
+						imageSegmented->data[y * imageSegmented->width + x] = 255;
+					}
 				}
-
-				// Desenhar o centro de gravidade
-				vc_draw_center_of_gravity(imageOutput, &blobs[i], 5);
-				// Desenhar o bounding box
-				vc_draw_bounding_box(imageOutput, &blobs[i]);
 			}
-
-			// Libertar a memoria dos blobs
-			free(blobs);
+			vc_image_free(imageTemp);
 		}
 
-		// // Apenas debug para conseguir ver a imagem a preto e branco
-		// cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
-        // for (int y = 0; y < imageClosed->height; y++) {
-        //     for (int x = 0; x < imageClosed->width; x++) {
-        //         uchar value = imageClosed->data[y * imageClosed->width + x];
-        //         imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
-        //     }
-        // }
+
+		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
+		// IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		// vc_binary_close(imageSegmented, imageClosed, 5, 23);
+
+		// //Obter os blobs das resistencias
+		// int nblobs;
+    	// OVC *blobs;
+		// IVC *imageBlobs = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		// blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
+
+		// // Se tiver encontrado blobs de resistencias
+		// if (blobs != NULL) {
+		// 	std::cerr << "Resistencias encontradas: " << nblobs << "\n";
+
+		// 	// Obter informação dos blobs
+		// 	vc_binary_blob_info(imageBlobs, blobs, nblobs);
+
+		// 	// Peercorrer os blobs
+		// 	for (int i = 0; i < nblobs; i++) {
+		// 		// Se o blob estiver a menos de 1% do inicio e 10% fim da imagem ignorar para garantir que a resitencia esta toda na imagem
+		// 		if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
+		// 			continue;
+		// 		}
+
+		// 		// Desenhar o centro de gravidade
+		// 		vc_draw_center_of_gravity(imageOutput, &blobs[i], 5);
+		// 		// Desenhar o bounding box
+		// 		vc_draw_bounding_box(imageOutput, &blobs[i]);
+		// 	}
+
+		// 	// Libertar a memoria dos blobs
+		// 	free(blobs);
+		// }
+
+		// Apenas debug para conseguir ver a imagem a preto e branco
+		cv::Mat imageToShow = cv::Mat(imageSegmented->height, imageSegmented->width, CV_8UC3);
+        for (int y = 0; y < imageSegmented->height; y++) {
+            for (int x = 0; x < imageSegmented->width; x++) {
+                uchar value = imageSegmented->data[y * imageSegmented->width + x];
+                imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
+            }
+        }
+		memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
 
 		// Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
-		memcpy(frame.data, imageOutput->data, video.width * video.height * 3);
+		// memcpy(frame.data, imageOutput->data, video.width * video.height * 3);
 		// Libertar a memoria das imagens IVC
 		vc_image_free(imageOutput);
 		vc_image_free(imageRGB);
 		vc_image_free(imageSegmented);
-		vc_image_free(imageClosed);
-		vc_image_free(imageBlobs);
+		// vc_image_free(imageClosed);
+		// vc_image_free(imageBlobs);
 		// +++++++++++++++++++++++++
 
 		/* Exibe a frame */
