@@ -12,17 +12,24 @@ extern "C" {
 
 // Defenir array com os valores do HSV
 HSV hsv_values[10] = {
-    {0, 360, 0, 100, 0, 0}, // Preto -> 0
-    {0, 45, 50, 100, 10, 50}, // Castanho -> 1
-    {345, 15, 60, 100, 50, 100}, // Vermelho -> 2
-    {15, 45, 60, 100, 50, 100}, // Laranja -> 3
-    {45, 75, 60, 100, 50, 100}, // Amarelo -> 4
-    {75, 165, 60, 100, 20, 100}, // Verde -> 5
-    {165, 255, 60, 100, 20, 100}, // Azul -> 6
-    {255, 345, 60, 100, 20, 100}, // Roxo -> 7
-    {0, 360, 0, 0, 20, 80}, // Cinza -> 8
-    {0, 360, 0, 0, 100, 100} // Branco -> 9
+    {0, 360, 0, 100, 0, 0},    // Preto -> 0
+    {10, 50, 30, 100, 20, 100},  // Castanho -> 1
+    {340, 20, 40, 100, 40, 100}, // Vermelho -> 2
+    {10, 50, 50, 100, 40, 100},  // Laranja -> 3
+    {45, 75, 60, 100, 50, 100},  // Amarelo -> 4
+    {35, 85, 30, 100, 30, 100}, // Verde -> 5
+    {85, 135, 30, 100, 30, 100}, // Azul -> 6 (ajustado)
+    {220, 320, 30, 100, 30, 100}, // Roxo -> 7
+    {0, 360, 0, 0, 20, 80},    // Cinza -> 8
+    {0, 360, 0, 0, 100, 100}   // Branco -> 9
 };
+
+
+
+
+
+
+
 
 void vc_timer(void) {
 	static bool running = false;
@@ -47,7 +54,7 @@ void vc_timer(void) {
 
 
 int main(void) {
-	// V�deo
+	// V deo
 	char videofile[100] = "../../video_resistors.mp4"; //Trocar para o caminho do video
 	cv::VideoCapture capture;
 	struct
@@ -61,31 +68,31 @@ int main(void) {
 	std::string str;
 	int key = 0;
 
-	/* Leitura de v�deo de um ficheiro */
+	/* Leitura de v deo de um ficheiro */
 	/* NOTA IMPORTANTE:
-	O ficheiro video.avi dever� estar localizado no mesmo direct�rio que o ficheiro de c�digo fonte.
+	O ficheiro video.avi dever  estar localizado no mesmo direct rio que o ficheiro de c digo fonte.
 	*/
 	capture.open(videofile);
 
-	/* Em alternativa, abrir captura de v�deo pela Webcam #0 */
+	/* Em alternativa, abrir captura de v deo pela Webcam #0 */
 	//capture.open(0, cv::CAP_DSHOW); // Pode-se utilizar apenas capture.open(0);
 
-	/* Verifica se foi poss�vel abrir o ficheiro de v�deo */
+	/* Verifica se foi poss vel abrir o ficheiro de v deo */
 	if (!capture.isOpened())
 	{
-		std::cerr << "Erro ao abrir o ficheiro de v�deo!\n";
+		std::cerr << "Erro ao abrir o ficheiro de v deo!\n";
 		return 1;
 	}
 
-	/* N�mero total de frames no v�deo */
+	/* N mero total de frames no v deo */
 	video.ntotalframes = (int)capture.get(cv::CAP_PROP_FRAME_COUNT);
-	/* Frame rate do v�deo */
+	/* Frame rate do v deo */
 	video.fps = (int)capture.get(cv::CAP_PROP_FPS);
-	/* Resolu��o do v�deo */
+	/* Resolu  o do v deo */
 	video.width = (int)capture.get(cv::CAP_PROP_FRAME_WIDTH);
 	video.height = (int)capture.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-	/* Cria uma janela para exibir o v�deo */
+	/* Cria uma janela para exibir o v deo */
 	cv::namedWindow("VC - VIDEO", cv::WINDOW_AUTOSIZE);
 
 	/* Inicia o timer */
@@ -93,16 +100,16 @@ int main(void) {
 
 	cv::Mat frame;
 	while (key != 'q') {
-		/* Leitura de uma frame do v�deo */
+		/* Leitura de uma frame do v deo */
 		capture.read(frame);
 
 		/* Verifica se conseguiu ler a frame */
 		if (frame.empty()) break;
 
-		/* N�mero da frame a processar */
+		/* N mero da frame a processar */
 		video.nframe = (int)capture.get(cv::CAP_PROP_POS_FRAMES);
 
-		/* Exemplo de inser��o texto na frame */
+		/* Exemplo de inser  o texto na frame */
 		str = std::string("RESOLUCAO: ").append(std::to_string(video.width)).append("x").append(std::to_string(video.height));
 		cv::putText(frame, str, cv::Point(20, 25), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
 		cv::putText(frame, str, cv::Point(20, 25), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
@@ -117,7 +124,7 @@ int main(void) {
 		cv::putText(frame, str, cv::Point(20, 100), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
 
 
-		// Fa�a o seu c�digo aqui...
+		// Fa a o seu c digo aqui...
 		// Cria uma nova imagem IVC
 		IVC *imageOutput = vc_image_new(video.width, video.height, 3, 255);
 		// Copia dados de imagem da estrutura cv::Mat para uma estrutura IVC
@@ -203,7 +210,7 @@ int main(void) {
 		/* Exibe a frame */
 		cv::imshow("VC - VIDEO", frame);
 
-		/* Sai da aplica��o, se o utilizador premir a tecla 'q' */
+		/* Sai da aplica  o, se o utilizador premir a tecla 'q' */
 		key = cv::waitKey(1);
 	}
 
@@ -213,7 +220,7 @@ int main(void) {
 	/* Fecha a janela */
 	cv::destroyWindow("VC - VIDEO");
 
-	/* Fecha o ficheiro de v�deo */
+	/* Fecha o ficheiro de v deo */
 	capture.release();
 
 	return 0;
