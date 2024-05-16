@@ -10,6 +10,12 @@
         "xstring": "c",
         "xutility": "c",
         "xiosbase": "c",
-        "cmath": "c"
+        "cmath": "c",
+        "string": "cpp",
+        "algorithm": "cpp",
+        "iterator": "cpp",
+        "xhash": "cpp",
+        "xmemory": "cpp",
+        "xtree": "cpp"
     }
 }

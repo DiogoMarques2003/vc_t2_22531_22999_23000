@@ -53,6 +53,12 @@ typedef struct {
     int vmax;
 } HSV;
 
+// Estrutura para salvar as cores entradas
+typedef struct {
+    int color;
+    int x;
+} CoresEncontradas;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //                    Macros
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
