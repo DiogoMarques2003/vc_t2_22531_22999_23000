@@ -12,17 +12,19 @@ extern "C" {
 
 // Defenir array com os valores do HSV
 HSV hsv_values[10] = {
-    {0, 360, 0, 100, 0, 0},    // Preto -> 0
-    {10, 50, 30, 100, 20, 100},  // Castanho -> 1
-    {340, 20, 40, 100, 40, 100}, // Vermelho -> 2
-    {10, 50, 50, 100, 40, 100},  // Laranja -> 3
-    {45, 75, 60, 100, 50, 100},  // Amarelo -> 4
-    {75, 165, 30, 100, 30, 100}, // Verde -> 5
-    {165, 255, 15, 100, 35, 100}, // Azul -> 6 (ajustado)
-    {220, 320, 30, 100, 30, 100}, // Roxo -> 7
-    {0, 360, 0, 10, 20, 80},    // Cinza -> 8
-    {0, 360, 0, 0, 100, 100}   // Branco -> 9
+    //{0, 360, 0, 15, 20, 30},    // Preto -> 0
+    //{15, 25, 40, 56, 30, 50},  // Castanho -> 1
+    {340, 14, 60, 90, 67, 100}, // Vermelho -> 2
+    //{25, 26, 70, 75, 80, 85},  // Laranja -> 3
+    //{64, 67, 100, 102, 100, 102},  // Amarelo -> 4
+    //{100, 165, 30, 100, 30, 100}, // Verde -> 5
+    //{165, 255, 15, 100, 35, 100}, // Azul -> 6
+    //{270, 320, 30, 100, 30, 100}, // Roxo -> 7
+    //{75, 80, 8, 10, 17, 30},    // Cinza -> 8
+    //{0, 360, 0, 0, 100, 100}   // Branco -> 9
 };
+
+int hsvColorsInt = sizeof(hsv_values) / sizeof(HSV);
 
 void vc_timer(void) {
 	static bool running = false;
@@ -114,11 +116,17 @@ int main(void) {
 
 		// Segmentar a imagem para obter o corpo das resistencias
 		IVC *imageSegmented = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100);
+		// vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100);
+		// memset(imageSegmented->data, 0, imageOutput->width * imageOutput->height);
+		for (int y = 0; y < imageOutput->height; y++) {
+				for (int x = 0; x < imageOutput->width; x++) {
+						imageSegmented->data[y * imageSegmented->width + x] = 0;
+				}
+			}
 
 		// Reconhecer as riscas das resistencias (hsv_values) e adicionar a imagem segmentada
 		IVC *imageTemp = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		for (int i = 0; i < sizeof(hsv_values) / sizeof(HSV); i++) {
+		for (int i = 0; i < hsvColorsInt; i++) {
 			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[i].hmin, hsv_values[i].hmax, hsv_values[i].smin, hsv_values[i].smax, hsv_values[i].vmin, hsv_values[i].vmax);
 			for (int y = 0; y < imageOutput->height; y++) {
 				for (int x = 0; x < imageOutput->width; x++) {
@@ -133,47 +141,52 @@ int main(void) {
 
 		// Dilatar e Erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistencia
 		IVC *imageClosed = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		vc_binary_close(imageSegmented, imageClosed, 3, 5);
+		memcpy(imageClosed->data, imageSegmented->data, video.width * video.height);
+		vc_binary_close(imageSegmented, imageClosed, 1, 11);
 
-		// //Obter os blobs das resistencias
-		// int nblobs;
-    	// OVC *blobs;
-		// IVC *imageBlobs = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
-		// blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
+		//Obter os blobs das resistencias
+		int nblobs = 0;
+    	OVC *blobs;
+		IVC *imageBlobs = vc_image_new(imageOutput->width, imageOutput->height, 1, 255);
+		blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
 
 		// // Se tiver encontrado blobs de resistencias
-		// if (blobs != NULL) {
-		// 	std::cerr << "Resistencias encontradas: " << nblobs << "\n";
+		if (blobs != NULL) {
+			// std::cerr << "Resistencias encontradas: " << nblobs << "\n";
 
-		// 	// Obter informação dos blobs
-		// 	vc_binary_blob_info(imageBlobs, blobs, nblobs);
+			// Obter informação dos blobs
+			vc_binary_blob_info(imageBlobs, blobs, nblobs);
 
-		// 	// Peercorrer os blobs
-		// 	for (int i = 0; i < nblobs; i++) {
-		// 		// Se o blob estiver a menos de 1% do inicio e 10% fim da imagem ignorar para garantir que a resitencia esta toda na imagem
-		// 		if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
-		// 			continue;
-		// 		}
+			// Peercorrer os blobs
+			for (int i = 0; i < nblobs; i++) {
+				// Se o blob estiver a menos de 1% do inicio e 10% fim da imagem ignorar para garantir que a resitencia esta toda na imagem
+				if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
+					continue;
+				}
 
-		// 		// Desenhar o centro de gravidade
-		// 		vc_draw_center_of_gravity(imageOutput, &blobs[i], 5);
-		// 		// Desenhar o bounding box
-		// 		vc_draw_bounding_box(imageOutput, &blobs[i]);
-		// 	}
+				// Desenhar o centro de gravidade e o bounding box
+                cv::Point pt1(blobs[i].x, blobs[i].y);
+                cv::Point pt2(blobs[i].x + blobs[i].width, blobs[i].y + blobs[i].height);
+                cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 2);
 
-		// 	// Libertar a memoria dos blobs
-		// 	free(blobs);
-		// }
+                cv::Point pt3(blobs[i].xc, blobs[i].yc);
+                cv::Point pt4(blobs[i].xc + 5, blobs[i].yc + 5);
+                cv::rectangle(frame, pt3, pt4, cv::Scalar(0, 255, 0), 2);
+			}
+
+			// Libertar a memoria dos blobs
+			free(blobs);
+		}		
 
 		// Apenas debug para conseguir ver a imagem a preto e branco
-		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
-        for (int y = 0; y < imageClosed->height; y++) {
-            for (int x = 0; x < imageClosed->width; x++) {
-                uchar value = imageClosed->data[y * imageClosed->width + x];
-                imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
-            }
-        }
-		memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
+		// cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
+        // for (int y = 0; y < imageClosed->height; y++) {
+        //     for (int x = 0; x < imageClosed->width; x++) {
+        //         uchar value = imageClosed->data[y * imageClosed->width + x];
+        //         imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
+        //     }
+        // }
+		// memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
 
 		// Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
 		// memcpy(frame.data, imageOutput->data, video.width * video.height * 3);
@@ -182,7 +195,7 @@ int main(void) {
 		vc_image_free(imageRGB);
 		vc_image_free(imageSegmented);
 		vc_image_free(imageClosed);
-		// vc_image_free(imageBlobs);
+		vc_image_free(imageBlobs);
 		// +++++++++++++++++++++++++
 
 		// Adicionar os textos das informações das frames
