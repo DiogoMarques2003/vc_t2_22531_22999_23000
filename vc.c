@@ -15,6 +15,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <math.h>
+#include <stdbool.h>
 #include "vc.h"
 
 
@@ -595,72 +596,61 @@ int vc_rgb_to_hsv(IVC *src, IVC *dst) {
 
 // hmin,hmax = [0, 360]; smin,smax = [0, 100]; vmin,vmax = [0, 100]
 int vc_hsv_segmentation(IVC *src, IVC *dst, int hmin, int hmax, int smin,
-                        int smax, int vmin, int vmax) {
-    unsigned char *datasrc = (unsigned char * ) src->data;
-    int bytesperline_src = src->width * src->channels;
-    int channels_src = src->channels;
-    unsigned char *datadst = (unsigned char * ) dst->data;
-    int bytesperline_dst = dst->width * dst->channels;
-    int channels_dst = dst->channels;
+                        int smax, int vmin, int vmax, int *found) {
+    unsigned char *datasrc = src->data;
+    unsigned char *datadst = dst->data;
     int width = src->width;
     int height = src->height;
-    int x, y;
-    float max, min, hue, sat, valor, delta;
-    long int pos_src, pos_dst;
-    float rf, gf, bf;
+    int bytesperline_src = width * src->channels;
+    int bytesperline_dst = width * dst->channels;
+    int channels_src = src->channels;
+    int channels_dst = dst->channels;
 
-    //verificalão de errors
-    if((src->width <= 0 ) || (src->height <= 0) || (src->data == NULL)) return 0;
-    if((src->width != dst->width) || (src->height != dst->height)) return 0;
-    if((src->channels != 3 ) || (dst->channels != 1))return 0 ;
+    if (src->width <= 0 || src->height <= 0 || src->data == NULL) return 0;
+    if (src->width != dst->width || src->height != dst->height) return 0;
+    if (src->channels != 3 || dst->channels != 1) return 0;
 
-    // meter em hsv
-    for(y=0; y<height ; y++){
-        for(x=0; x<width ; x++){
-            pos_src = y * bytesperline_src + x * channels_src;
-            pos_dst = y * bytesperline_dst + x * channels_dst;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int pos_src = y * bytesperline_src + x * channels_src;
+            int pos_dst = y * bytesperline_dst + x * channels_dst;
 
-            rf = (float) datasrc[pos_src];
-            gf = (float) datasrc[pos_src + 1];
-            bf = (float) datasrc[pos_src + 2];
+            float rf = datasrc[pos_src] / 255.0f;
+            float gf = datasrc[pos_src + 1] / 255.0f;
+            float bf = datasrc[pos_src + 2] / 255.0f;
 
-            max = (rf > gf ? (rf > bf ? rf : bf) : (gf > bf ? gf : bf));
-            min = (rf < gf ? (rf < bf ? rf : bf) : (gf < bf ? gf : bf));
-            delta = max - min;
+            float max = (rf > gf ? (rf > bf ? rf : bf) : (gf > bf ? gf : bf));
+            float min = (rf < gf ? (rf < bf ? rf : bf) : (gf < bf ? gf : bf));
+            float delta = max - min;
 
-            //calcular value
-            valor = max;
+            float hue = 0, sat = 0, valor = max;
 
-            //calcular saturação
-            if (max==0 || max == min) {
-                sat=0;
-                hue=0;
-            } else {
-                sat= delta  * 100.0f / valor;
-                //calcular hue
-                // Quando o vermelho é o maior, Hue será um ângulo entre 300 e 360 ou entre 0 e 60
-                if (rf==max && gf>=bf ) {
-                    hue = 60.0f * (gf - bf) / delta ;
-                } else if (rf==max && bf>gf ) {
-                    hue = 360 + 60.0f * (gf - bf) / delta ;
-                } else if(gf==max) {
-                    hue = 120 + 60.0f * (bf - rf) / delta;
-                } else if (max==bf) {
-                    hue = 240 + 60.0f * (rf - gf) / delta ;
+            if (max != 0) {
+                sat = delta / max;
+                if (delta != 0) {
+                    if (max == rf) {
+                        hue = 60.0f * (gf - bf) / delta + (gf < bf ? 360.0f : 0.0f);
+                    } else if (max == gf) {
+                        hue = 60.0f * (bf - rf) / delta + 120.0f;
+                    } else {
+                        hue = 60.0f * (rf - gf) / delta + 240.0f;
+                    }
                 }
             }
 
-            //se o hmin for maior que o hmax  entao hmin ate 360 e de 0 ate hmax
-            if (hmin > hmax ) {
-                if ((hue >= 0 && hue <= hmax || hue <= 360 && hue >= hmin) && sat <= smax && sat  >= smin && valor <= vmax / 100.0f * 255 && valor >= vmin / 100.0f * 255)
-                    datadst[pos_dst] = 255;
-                else
-                    datadst[pos_dst] = 0;
+            hue = fmod(hue, 360.0f);
+            sat *= 100.0f;
+            valor *= 100.0f;
+
+            bool hue_in_range = (hmin > hmax) ? (hue >= hmin || hue <= hmax) : (hue >= hmin && hue <= hmax);
+            bool sat_in_range = sat >= smin && sat <= smax;
+            bool val_in_range = valor >= vmin && valor <= vmax;
+
+            if (hue_in_range && sat_in_range && val_in_range) {
+                datadst[pos_dst] = 255;
+                *found = 1;
             } else {
-                if (hue <= hmax && hue >= hmin && sat <= smax && sat  >= smin && valor <= vmax / 100.0f * 255 && valor >= vmin / 100.0f * 255)
-                    datadst[pos_dst] = 255;
-                else
-                    datadst[pos_dst] = 0;
+                datadst[pos_dst] = 0;
             }
         }
     }
@@ -945,14 +935,10 @@ int vc_binary_dilate(IVC *src, IVC *dst, int kernel){
     int height = src->height;
     int bytesperline = src->bytesperline;
     int channels = src->channels;
-    int x, y;
-    int xk, yk;
-    int i, j;
+    int x, y, xk, yk, i, j;
     long int pos, posk;
     int s1, s2;
-    unsigned char pixel;
 
-    // Verificação de erros
     if ((src->width <= 0) || (src->height <= 0) || (src->data == NULL)) return 0;
     if ((src->width != dst->width) || (src->height != dst->height) || (src->channels != dst->channels)) return 0;
     if (channels != 1) return 0;
@@ -960,54 +946,46 @@ int vc_binary_dilate(IVC *src, IVC *dst, int kernel){
     s2 = (kernel - 1) / 2;
     s1 = -(s2);
 
-    memcpy(datadst, datasrc, bytesperline * height);
+    memset(datadst, 0, bytesperline * height);
 
-    // Cálculo da dilatacao
-    for (int y = 0; y < height; y++) {
-        int y_bytes = y * bytesperline; // indice da linha atual
-        for (int x = 0; x < width; x++) {
-            unsigned char pixel = 0; // Iniciar o pixel a ser processado
-            pos = y_bytes + x * channels; // Calcular a posição do pixel atual
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
+            pos = y * bytesperline + x * channels;
+            unsigned char pixel = 0;
 
-            // Percorrer a vizinhança do pixel 
-            for (int yk = s1; yk <= s2; yk++) {
-                int j = y + yk; 
-                if (j < 0 || j >= height) continue; // Verificar se a linha está dentro dos limites da imagem
-                int j_bytes = j * bytesperline; 
-
-                for (int xk = s1; xk <= s2; xk++) {
-                    int i = x + xk;
-                    if (i < 0 || i >= width) continue; // Verificar se a coluna está dentro dos limites da imagem
-                    posk = j_bytes + i * channels; // Calcular a posição do pixel da vizinhança
-                    pixel |= datasrc[posk]; // Realizar dilatação binária ao fazer OR dos valores dos pixels
+            for (yk = s1; yk <= s2; yk++) {
+                j = y + yk;
+                if (j < 0 || j >= height) continue;
+                for (xk = s1; xk <= s2; xk++) {
+                    i = x + xk;
+                    if (i < 0 || i >= width) continue;
+                    posk = j * bytesperline + i * channels;
+                    pixel |= datasrc[posk];
                 }
             }
 
-            // Definir o pixel na imagem de destino
-            // Apenas definir para 255 se algum pixel vizinho for 255, caso contrário manter o valor original
-            datadst[pos] = (pixel == 255) ? 255 : datadst[pos];
+            if (pixel == 255) {
+                datadst[pos] = 255;
+            }
         }
     }
 
     return 1;
 }
+
 // Erosão binária
 int vc_binary_erode(IVC *src, IVC *dst, int kernel)
 {
-    unsigned char *datasrc = (unsigned char *)src->data;
+   unsigned char *datasrc = (unsigned char *)src->data;
     unsigned char *datadst = (unsigned char *)dst->data;
     int width = src->width;
     int height = src->height;
     int bytesperline = src->bytesperline;
     int channels = src->channels;
-    int x, y;
-    int xk, yk;
-    int i, j;
+    int x, y, xk, yk, i, j;
     long int pos, posk;
     int s1, s2;
-    unsigned char pixel;
 
-    // Verificação de erros
     if ((src->width <= 0) || (src->height <= 0) || (src->data == NULL)) return 0;
     if ((src->width != dst->width) || (src->height != dst->height) || (src->channels != dst->channels)) return 0;
     if (channels != 1) return 0;
@@ -1015,39 +993,29 @@ int vc_binary_erode(IVC *src, IVC *dst, int kernel)
     s2 = (kernel - 1) / 2;
     s1 = -(s2);
 
-    memcpy(datadst, datasrc, bytesperline * height);
+    memset(datadst, 255, bytesperline * height);
 
-    // Cálculo da erosão
-    for (y = 0; y<height; y++) {
-        for (x = 0; x<width; x++) {
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
             pos = y * bytesperline + x * channels;
-
-            pixel = datasrc[pos];
+            unsigned char pixel = 255;
 
             for (yk = s1; yk <= s2; yk++) {
                 j = y + yk;
-
-                if ((j < 0) || (j >= height)) continue;
-
+                if (j < 0 || j >= height) continue;
                 for (xk = s1; xk <= s2; xk++) {
                     i = x + xk;
-
-                    if ((i < 0) || (i >= width)) continue;
-
+                    if (i < 0 || i >= width) continue;
                     posk = j * bytesperline + i * channels;
-                    //aqui a unica diference entre erode ou dilate
-                    //se encontrar um pixel a branco mete o pixel central a branco
-
                     pixel &= datasrc[posk];
                 }
             }
 
-            // Se um qualquer pixel da vizinhança, na imagem de origem, for de plano de fundo, então o pixel central
-            // na imagem de destino é também definido como plano de fundo.
-            if (pixel == 0) datadst[pos] = 0;
+            if (pixel == 0) {
+                datadst[pos] = 0;
+            }
         }
     }
-
 
     return 1;
 }
@@ -1068,13 +1036,10 @@ int vc_binary_open(IVC *src, IVC *dst, int kernelErode, int kernelDilate){
 }
 
 int vc_binary_close(IVC *src, IVC *dst, int kernelErode, int kernelDilate){
+    IVC *temp = vc_image_new(src->width, src->height, 1, 255);
 
-    IVC *temp;
-    temp = vc_image_new(src->width,src->height,1,255);
-
-    vc_binary_dilate(src,temp,kernelDilate);
-
-    vc_binary_erode(temp,dst,kernelErode);
+    vc_binary_dilate(src, temp, kernelDilate);
+    vc_binary_erode(temp, dst, kernelErode);
 
     vc_image_free(temp);
 
