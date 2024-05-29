@@ -13,20 +13,21 @@ extern "C"
 
 // Defenir array com os valores do HSV
 HSV hsv_values[10] = {
-	{0, 360, 0, 100, 0, 0},		  // Preto -> 0
-	{10, 50, 30, 100, 20, 100},	  // Castanho -> 1
-	{340, 20, 40, 100, 40, 100},  // Vermelho -> 2
-	{10, 50, 50, 100, 40, 100},	  // Laranja -> 3
-	{45, 75, 60, 100, 50, 100},	  // Amarelo -> 4
-	{75, 165, 30, 100, 30, 100},  // Verde -> 5
-	{165, 255, 15, 100, 35, 100}, // Azul -> 6 (ajustado)
-	{220, 320, 30, 100, 30, 100}, // Roxo -> 7
-	{0, 360, 0, 10, 20, 80},	  // Cinza -> 8
-	{0, 360, 0, 0, 100, 100}	  // Branco -> 9
+    //{0, 360, 0, 15, 20, 30},    // Preto -> 0
+    //{15, 25, 40, 56, 30, 50},  // Castanho -> 1
+    {340, 14, 60, 90, 67, 100}, // Vermelho -> 2
+    //{25, 26, 70, 75, 80, 85},  // Laranja -> 3
+    //{64, 67, 100, 102, 100, 102},  // Amarelo -> 4
+    //{100, 165, 30, 100, 30, 100}, // Verde -> 5
+    //{165, 255, 15, 100, 35, 100}, // Azul -> 6
+    //{270, 320, 30, 100, 30, 100}, // Roxo -> 7
+    //{75, 80, 8, 10, 17, 30},    // Cinza -> 8
+    //{0, 360, 0, 0, 100, 100}   // Branco -> 9
 };
 
-void vc_timer(void)
-{
+int hsvColorsInt = sizeof(hsv_values) / sizeof(HSV);
+
+void vc_timer(void) {
 	static bool running = false;
 	static std::chrono::steady_clock::time_point previousTime = std::chrono::steady_clock::now();
 
@@ -226,7 +227,7 @@ int main(void)
 
 					// Adicionar o texto com o valor da resistência
 					str = std::to_string(resistencia) + " Ohms";
-                    cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+          cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
 					
 					// Desenhar o centro de gravidade e o bounding box
                     cv::Point pt1(blobs[i].x, blobs[i].y);
