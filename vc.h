@@ -53,6 +53,7 @@ typedef struct {
     int vmax;
     int erosao;
     int dilatacao;
+    int minBlobArea;
 } HSV;
 
 // Estrutura para salvar as cores entradas
