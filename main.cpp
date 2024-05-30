@@ -92,7 +92,7 @@ int main(void)
 	/* Inicia o timer */
 	vc_timer();
 
-	cv::Mat frame;
+	cv::Mat frame, opencvSegmentation, opencvClose;
 	IVC *imageOutput = vc_image_new(video.width, video.height, 3, 255);
 	IVC *imageRGB = vc_image_new(video.width, video.height, 3, 255);
 	IVC *imageSegmented = vc_image_new(video.width, video.height, 1, 255);
@@ -143,21 +143,17 @@ int main(void)
 						}
 					}
 				}
-		}
+			}
 		}
 
 		// Dilatar e erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistência
 		//TODO: validar quais os melhores valores para isto
-		vc_binary_close(imageSegmented, imageClosed, 1, 11);
-
-		cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
-        for (int y = 0; y < imageClosed->height; y++) {
-            for (int x = 0; x < imageClosed->width; x++) {
-                uchar value = imageClosed->data[y * imageClosed->width + x];
-                imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
-            }
-        }
-		memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
+		// vc_binary_close(imageSegmented, imageClosed, 1, 11);
+		// Usada a função de dilatação do opencv por ser mais eficiente quando tem valores/imagens grandes
+		opencvSegmentation = cv::Mat(imageSegmented->height, imageSegmented->width, CV_8UC1, imageSegmented->data);
+		cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(19, 19));
+		cv::morphologyEx(opencvSegmentation, opencvClose, cv::MORPH_CLOSE, element);
+		memcpy(imageClosed->data, opencvClose.data, video.width * video.height * 1);
 
 		// Obter os blobs das resistências
 		int nblobs;
@@ -175,8 +171,8 @@ int main(void)
 					continue;
 				}
 
-				// Se a área do blob não estiver entre 6000 e 13000, ignorar porque não é uma resistencia
-				if (blobs[i].area < 6000 || blobs[i].area > 13000) {
+				// Se a área do blob não estiver entre 4800 e 9500, ignorar porque não é uma resistencia
+				if (blobs[i].area < 4800 || blobs[i].area > 9500) {
 					continue;
 				}
 
@@ -187,6 +183,17 @@ int main(void)
 
 		}
 
+		// cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
+        // for (int y = 0; y < imageClosed->height; y++) {
+        //     for (int x = 0; x < imageClosed->width; x++) {
+        //         uchar value = imageClosed->data[y * imageClosed->width + x];
+        //         imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
+        //     }
+        // }
+		// memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
+		// if (blobs != NULL) {
+		// 	// Obter informação dos blobs
+		// 	vc_binary_blob_info(imageBlobs, blobs, nblobs);
 		// 	// Percorrer os blobs
 		// 	for (int i = 0; i < nblobs; i++) {
 		// 		// Se o blob estiver a menos de 1% do início e 10% do fim da imagem, ignorar para garantir que a resistência está toda na imagem
@@ -195,6 +202,10 @@ int main(void)
 		// 		}
 
 		// 		//TODO: Adicionar validação pela area do blob
+		// 		// Se a área do blob não estiver entre 6000 e 13000, ignorar porque não é uma resistencia
+		// 		if (blobs[i].area < 4800 || blobs[i].area > 8500) {
+		// 			continue;
+		// 		}
 
 		// 		// Pegar na imagem original do blob
 		// 		IVC *imageBlob = vc_image_new(blobs[i].width, blobs[i].height, 3, 255);
@@ -214,7 +225,8 @@ int main(void)
 
 		// 		// Segmentar pelas cores das riscas das resistências
 		// 		for (int j = 0; j < hsv_count; j++) {
-		// 			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[j].hmin, hsv_values[j].hmax, hsv_values[j].smin, hsv_values[j].smax, hsv_values[j].vmin, hsv_values[j].vmax);
+		// 			foundPixeis = 0;
+		// 			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[j].hmin, hsv_values[j].hmax, hsv_values[j].smin, hsv_values[j].smax, hsv_values[j].vmin, hsv_values[j].vmax, &foundPixeis);
 
 		// 			// Fazer close para juntar os espaços que possam estar pretos
 		// 			//TODO: trocar pelos valores que estiverem definidos no hsv_values
