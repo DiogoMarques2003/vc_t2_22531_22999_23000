@@ -134,8 +134,6 @@ int main(void)
 		// Converter a imagem de BGR para RGB
 		vc_convert_bgr_to_rgb(imageOutput, imageRGB);
 
-		if (video.nframe == 263) vc_write_image("../../image.ppm", imageRGB);
-
 		// Segmentar a imagem para obter o corpo das resistências
 		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100, &foundPixeis);
 
