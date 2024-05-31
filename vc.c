@@ -1367,45 +1367,57 @@ int vc_blob_to_gray_rgb(IVC *src, IVC *dst, int nlabels) {
     return 0;
 }
 
-int vc_draw_center_of_gravity(IVC *img, OVC *blob, int comp) {
+int vc_draw_center_of_gravity(unsigned char *data, OVC *blob, int width, int height, int comp) {
     int x, y;
+    int bytesperline = width * 3;
 
+    // Desenhar linha horizontal
     for (x = blob->xc - comp; x <= blob->xc + comp; x++) {
-        img->data[blob->yc * img->bytesperline + x * img->channels] = 0;
-        img->data[blob->yc * img->bytesperline + x * img->channels + 1] = 255;
-        img->data[blob->yc * img->bytesperline + x * img->channels + 2] = 0;
+        int index = blob->yc * bytesperline + x * 3;
+        data[index] = 0;
+        data[index + 1] = 255;
+        data[index + 2] = 0;
     }
 
+    // Desenhar linha vertical
     for (y = blob->yc - comp; y <= blob->yc + comp; y++) {
-        img->data[y * img->bytesperline + blob->xc * img->channels] = 0;
-        img->data[y * img->bytesperline + blob->xc * img->channels + 1] = 255;
-        img->data[y * img->bytesperline + blob->xc * img->channels + 2] = 0;
+        int index = y * bytesperline + blob->xc * 3;
+        data[index] = 0;
+        data[index + 1] = 255;
+        data[index + 2] = 0;
     }
 
     return 1;
 }
 
-int vc_draw_bounding_box(IVC *img, OVC *blob) {
+int vc_draw_bounding_box(unsigned char *data, OVC *blob, int width, int height) {
     int x, y;
+    int bytesperline = width * 3;
 
-    for(y = blob->y; y < blob->y + blob->height; y++) {
-        img->data[y * img->bytesperline + blob->x * img->channels] = 0;
-        img->data[y * img->bytesperline + blob->x * img->channels + 1] = 255;
-        img->data[y * img->bytesperline + blob->x * img->channels + 2] = 0;
+    // Desenhar linhas verticais esquerda e direita
+    for (y = blob->y; y < blob->y + blob->height; y++) {
+        int linhaEsquerda = y * bytesperline + blob->x * 3;
+        data[linhaEsquerda] = 0;
+        data[linhaEsquerda + 1] = 255;
+        data[linhaEsquerda + 2] = 0;
 
-        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels] = 0;
-        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels + 1] = 255;
-        img->data[y * img->bytesperline + (blob->x + blob->width - 1) * img->channels + 2] = 0;
+        int linhaDireita = y * bytesperline + (blob->x + blob->width - 1) * 3;
+        data[linhaDireita] = 0;
+        data[linhaDireita + 1] = 255;
+        data[linhaDireita + 2] = 0;
     }
 
+    // Desenhar linhas horizontais superior e inferior
     for (x = blob->x; x < blob->x + blob->width; x++) {
-        img->data[blob->y * img->bytesperline + x * img->channels] = 0;
-        img->data[blob->y * img->bytesperline + x * img->channels + 1] = 255;
-        img->data[blob->y * img->bytesperline + x * img->channels + 2] = 0;
+        int linhaCima = blob->y * bytesperline + x * 3;
+        data[linhaCima] = 0;
+        data[linhaCima + 1] = 255;
+        data[linhaCima + 2] = 0;
 
-        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels] = 0;
-        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels + 1] = 255;
-        img->data[(blob->y + blob->height - 1) * img->bytesperline + x * img->channels + 2] = 0;
+        int linhaBaixo = (blob->y + blob->height - 1) * bytesperline + x * 3;
+        data[linhaBaixo] = 0;
+        data[linhaBaixo + 1] = 255;
+        data[linhaBaixo + 2] = 0;
     }
 
     return 0;

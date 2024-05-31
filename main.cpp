@@ -27,6 +27,21 @@ HSV hsv_values[10] = {
 
 int hsvColorsInt = sizeof(hsv_values) / sizeof(HSV);
 
+void opencvClose(IVC *image, IVC *imageClosed, int erosao, int dilatacao) {
+	// Cria a imagem no opencv com base na imagem IVC
+    cv::Mat opencvSegmentation(image->height, image->width, CV_8UC1, image->data);
+
+    // Criar o trashold para a imagem
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(erosao, dilatacao));
+
+    // Aplicar a operação de close do opencv
+    cv::Mat opencvClose;
+    cv::morphologyEx(opencvSegmentation, opencvClose, cv::MORPH_CLOSE, element);
+
+    // Copiar a imagem gerada pelo close para a imagem IVC
+    memcpy(imageClosed->data, opencvClose.data, image->width * image->height);
+}
+
 void vc_timer(void) {
 	static bool running = false;
 	static std::chrono::steady_clock::time_point previousTime = std::chrono::steady_clock::now();
@@ -92,7 +107,7 @@ int main(void)
 	/* Inicia o timer */
 	vc_timer();
 
-	cv::Mat frame, opencvSegmentation, opencvClose;
+	cv::Mat frame;
 	IVC *imageOutput = vc_image_new(video.width, video.height, 3, 255);
 	IVC *imageRGB = vc_image_new(video.width, video.height, 3, 255);
 	IVC *imageSegmented = vc_image_new(video.width, video.height, 1, 255);
@@ -122,9 +137,7 @@ int main(void)
 		if (video.nframe == 263) vc_write_image("../../image.ppm", imageRGB);
 
 		// Segmentar a imagem para obter o corpo das resistências
-		// vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100, &foundPixeis);
-
-		memset(imageSegmented->data, 0, video.width * video.height * 1);
+		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100, &foundPixeis);
 
 		// // Se encontrou pixeis, segmentar pelas cores das riscas das resistências
 		if (foundPixeis == 1) {
@@ -148,175 +161,138 @@ int main(void)
 					}
 				}
 			}
+
+			// Dilatar e erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistência
+			// Usada a função de dilatação do opencv por ser mais eficiente quando tem valores/imagens grandes
+			opencvClose(imageSegmented, imageClosed, 19, 19);
+
+			// Obter os blobs das resistências
+			int nblobs;
+			OVC *blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
+
+			// Se encontrou blobs
+			if (blobs != NULL) {
+				// Obter informação dos blobs
+				vc_binary_blob_info(imageBlobs, blobs, nblobs);
+
+				// Percorrer os blobs
+				for (int i = 0; i < nblobs; i++) {
+					// Se o blob estiver a menos de 8% do início e 10% do fim da imagem, ignorar para garantir que a resistência está toda na imagem
+					if (blobs[i].y < 0.08 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
+						continue;
+					}
+
+					//Se a área do blob não estiver entre 4800 e 9500, ignorar porque não é uma resistencia
+					if (blobs[i].area < 4800 || blobs[i].area > 9500) {
+						continue;
+					}
+
+					// Pegar na imagem original do blob (Recortar a imagem do blob)
+					IVC *imageBlob = vc_image_new(blobs[i].width, blobs[i].height, 3, 255);
+					IVC *imageBlobSegmentation = vc_image_new(blobs[i].width, blobs[i].height, 1, 255);
+					IVC *imageBlobsClosed = vc_image_new(blobs[i].width, blobs[i].height, 1, 255);
+					IVC *imageBlobsBlobs = vc_image_new(blobs[i].width, blobs[i].height, 1, 255);
+
+					// Copiar o blob para a nova imagem
+					for (int y = 0; y < blobs[i].height; y++) {
+						for (int x = 0; x < blobs[i].width; x++) {
+							for (int band = 0; band < 3; band++) {
+								imageBlob->data[(y * imageBlob->width + x) * 3 + band] =
+									imageRGB->data[((blobs[i].y + y) * imageRGB->width + (blobs[i].x + x)) * 3 + band];
+							}
+						}
+					}
+
+					// Variáveis para guardar as cores encontradas para depois gerar o valor da resistência
+					int countColors = 0;
+					CoresEncontradas colors[4];
+
+					// Percorrer as cores do HSV
+					for (int j = 0; j < hsv_count; j++) {
+						// Se o hsv tiver erosão ou dilatação com -1 é porque não aparece no video
+						if (hsv_values[j].erosao == -1 || hsv_values[j].dilatacao == -1) {
+							continue;
+						}
+
+						foundPixeis = 0;
+						vc_hsv_segmentation(imageBlob, imageBlobSegmentation, hsv_values[j].hmin, hsv_values[j].hmax, hsv_values[j].smin, hsv_values[j].smax, hsv_values[j].vmin, hsv_values[j].vmax, &foundPixeis);
+
+						// Se não encontrou pixeis, passar para a próxima cor
+						if (foundPixeis == 0) {
+							continue;
+						}
+
+						// Fazer close na imagem
+						opencvClose(imageBlobSegmentation, imageBlobsClosed, hsv_values[j].erosao, hsv_values[j].dilatacao);
+
+						// Obter os blobs das resistências
+						int nblobsBlob;
+						OVC *blobsBlob = vc_binary_blob_labelling(imageBlobsClosed, imageBlobsBlobs, &nblobsBlob);
+
+						// Se encontrou blobs
+						if (blobsBlob != NULL) {
+							// Obter informação dos blobs
+							vc_binary_blob_info(imageBlobsBlobs, blobsBlob, nblobsBlob);
+
+							// Percorrer os blobs
+							for (int k = 0; k < nblobsBlob; k++) {
+								if (blobsBlob[k].area < hsv_values[j].minBlobArea) {
+									continue;
+								}
+
+								colors[countColors].color = j;
+								colors[countColors].x = blobsBlob[k].xc;
+								countColors++;
+                    		}
+
+							// Libertar a memória dos blobs
+							free(blobsBlob);
+						}
+
+						// Se encontrou 4 cores ou mais, sair do loop
+						if (countColors >= 4) {
+							break;
+						}
+					}
+
+					// Validar se tem 3 ou 4 cores para calcular a resistência
+					if (countColors == 3 || countColors == 4) {
+						// Ordenar as cores de forma crescente
+						std::sort(colors, colors + 4, [](CoresEncontradas &a, CoresEncontradas &b) { 
+							return a.x < b.x;
+						});
+
+						// Calcular o valor da resistência
+						int resistencia = 0;
+						for (int j = 0; j < countColors - 1; j++) {
+							resistencia += colors[j].color * pow(10, countColors - j - 2);
+						}
+
+						// Aplicar o multiplicador
+						resistencia *= pow(10, colors[countColors - 1].color);
+
+						// Adicionar o texto com o valor da resistência
+						str = std::to_string(resistencia) + " Ohms +/-5%";
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+
+						// Adicionar texto da posição da resistência
+						str = "X: " + std::to_string(blobs[i].x) + " Y: " + std::to_string(blobs[i].y);
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+
+						// Denhar o centro de gravidade e o bounding box
+						vc_draw_center_of_gravity(frame.data, &blobs[i], video.width, video.height, 5);
+						vc_draw_bounding_box(frame.data, &blobs[i], video.width, video.height);
+					}
+
+					vc_image_free(imageBlob);
+					vc_image_free(imageBlobSegmentation);
+					vc_image_free(imageBlobsClosed);
+					vc_image_free(imageBlobsBlobs);
+				}
+				// Libertar a memória dos blobs
+				free(blobs);
+			}
 		}
-
-		// Dilatar e erodir a imagem para remover o espaço em branco por causa das linhas a cor da resistência
-		// Usada a função de dilatação do opencv por ser mais eficiente quando tem valores/imagens grandes
-		opencvSegmentation = cv::Mat(imageSegmented->height, imageSegmented->width, CV_8UC1, imageSegmented->data);
-		cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(19, 19));
-		cv::morphologyEx(opencvSegmentation, opencvClose, cv::MORPH_CLOSE, element);
-		memcpy(imageClosed->data, opencvClose.data, video.width * video.height * 1);
-
-		// Obter os blobs das resistências
-		int nblobs;
-		OVC *blobs = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobs);
-
-		// Se encontrou blobs
-		// if (blobs != NULL) {
-		// 	// Obter informação dos blobs
-		// 	vc_binary_blob_info(imageBlobs, blobs, nblobs);
-
-		// 	// Percorrer os blobs
-		// 	for (int i = 0; i < nblobs; i++) {
-		// 		// Se o blob estiver a menos de 1% do início e 10% do fim da imagem, ignorar para garantir que a resistência está toda na imagem
-		// 		if (blobs[i].y < 0.08 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
-		// 			continue;
-		// 		}
-				
-		// 		// Se a área da fita for muito pequena avançar
-		// 		if (blobs[i].area < 10) {
-		// 			continue;
-		// 		}
-
-		// 		cv::Point pt1(blobs[i].x, blobs[i].y);
-		// 		cv::Point pt2(blobs[i].x + blobs[i].width, blobs[i].y + blobs[i].height);
-        //     	cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 2);
-
-		// 		// colocar area da risca no ecrã
-		// 		str = i + " -- " + std::to_string(blobs[i].area);
-		// 		cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-		// 	}
-		// }
-
-		// cv::Mat imageToShow = cv::Mat(imageClosed->height, imageClosed->width, CV_8UC3);
-        // for (int y = 0; y < imageClosed->height; y++) {
-        //     for (int x = 0; x < imageClosed->width; x++) {
-        //         uchar value = imageClosed->data[y * imageClosed->width + x];
-        //         imageToShow.at<cv::Vec3b>(y, x) = cv::Vec3b(value, value, value); // Replicar valor para os três canais
-        //     }
-        // }
-		// memcpy(frame.data, imageToShow.data, video.width * video.height * 3);
-		// if (blobs != NULL) {
-		// 	// Obter informação dos blobs
-		// 	vc_binary_blob_info(imageBlobs, blobs, nblobs);
-
-		// 	// Percorrer os blobs
-		// 	for (int i = 0; i < nblobs; i++) {
-		// 		// Se o blob estiver a menos de 1% do início e 10% do fim da imagem, ignorar para garantir que a resistência está toda na imagem
-		// 		if (blobs[i].y < 0.001 * imageBlobs->height || blobs[i].y > 0.90 * imageBlobs->height) {
-		// 			continue;
-		// 		}
-
-		// 		//Se a área do blob não estiver entre 4800 e 9500, ignorar porque não é uma resistencia
-		// 		if (blobs[i].area < 4800 || blobs[i].area > 9500) {
-		// 			continue;
-		// 		}
-
-		// 		// Pegar na imagem original do blob
-		// 		IVC *imageBlob = vc_image_new(blobs[i].width, blobs[i].height, 3, 255);
-
-		// 		// Copiar o blob para a nova imagem
-		// 		for (int y = 0; y < blobs[i].height; y++) {
-		// 			for (int x = 0; x < blobs[i].width; x++) {
-		// 				for (int band = 0; band < 3; band++) {
-		// 					imageBlob->data[(y * imageBlob->width + x) * 3 + band] =
-        //             			imageRGB->data[((blobs[i].y + y) * imageRGB->width + (blobs[i].x + x)) * 3 + band];
-		// 				}
-		// 			}
-		// 		}
-
-		// 		int countColors = 0;
-		// 		CoresEncontradas colors[4];
-
-		// 		// Segmentar pelas cores das riscas das resistências
-		// 		for (int j = 0; j < hsv_count; j++) {
-		// 			// Se o hsv tiver erosão ou dilatação com -1 é porque não aparece no video
-		// 			if (hsv_values[i].erosao == -1 || hsv_values[i].dilatacao == -1) {
-		// 				continue;
-		// 			}
-
-		// 			foundPixeis = 0;
-		// 			vc_hsv_segmentation(imageRGB, imageTemp, hsv_values[j].hmin, hsv_values[j].hmax, hsv_values[j].smin, hsv_values[j].smax, hsv_values[j].vmin, hsv_values[j].vmax, &foundPixeis);
-
-		// 			// Se não encontrou pixeis, passar para a próxima cor
-		// 			if (foundPixeis == 0) {
-		// 				continue;
-		// 			}
-
-		// 			// Fazer close para juntar os espaços que possam estar pretos
-		// 			//TODO: trocar pelos valores que estiverem definidos no hsv_values
-		// 			// vc_binary_close(imageTemp, imageClosed, hsv_values[i].erosao, hsv_values[i].dilatacao);
-		// 			opencvSegmentation = cv::Mat(imageTemp->height, imageTemp->width, CV_8UC1, imageTemp->data);
-		// 			cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(19, 19));
-		// 			cv::morphologyEx(opencvSegmentation, opencvClose, cv::MORPH_CLOSE, element);
-		// 			memcpy(imageClosed->data, opencvClose.data, video.width * video.height * 1);
-
-		// 			// Obter os blobs das resistências
-		// 			int nblobsBlob;
-		// 			OVC *blobsBlob = vc_binary_blob_labelling(imageClosed, imageBlobs, &nblobsBlob);
-
-		// 			// Se encontrou blobs
-		// 			if (blobsBlob != NULL) {
-		// 				// Obter informação dos blobs
-		// 				vc_binary_blob_info(imageBlobs, blobsBlob, nblobsBlob);
-
-		// 				// Percorrer os blobs
-        //            		for (int k = 0; k < nblobsBlob; k++) {
-	    //				//TODO: Adicionar a verificação pela area do blobs da risca
-		// 					printf("Cor encontrada: %d\n", j);
-        //                 	colors[countColors].color = j;
-        //                 	colors[countColors].x = blobsBlob[k].xc;
-        //                 	countColors++;
-        //             	}
-
-		// 				// Libertar a memória dos blobs
-		// 				free(blobsBlob);
-		// 			}
-
-		// 			// Se encontrou 4 cores, sair do loop
-		// 			if (countColors >= 4) {
-		// 				break;
-		// 			}
-		// 		}
-
-		// 		// Desenhar o centro de gravididade e boundingbox se tiver 3 ou 4 cores
-		// 		if (countColors == 3 || countColors == 4) {
-		// 			// Ordenar as cores de forma crescente
-		// 			std::sort(colors, colors + 4, [](CoresEncontradas &a, CoresEncontradas &b) { 
-		// 				return a.x < b.x;
-		// 			});
-
-		// 			// Calcular o valor da resistência
-		// 			int resistencia = 0;
-		// 			for (int j = 0; j < countColors - 1; j++) {
-		// 				resistencia += colors[j].color * pow(10, countColors - j - 2);
-		// 			}
-
-		// 			// Aplicar o multiplicador
-		// 			resistencia *= pow(10, colors[countColors - 1].color);
-
-		// 			printf("Resistencia: %d Ohms\n", resistencia);
-
-		// 			// Adicionar o texto com o valor da resistência
-		// 			str = std::to_string(resistencia) + " Ohms";
-        //   			cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-					
-		// 			// Desenhar o centro de gravidade e o bounding box
-        //             cv::Point pt1(blobs[i].x, blobs[i].y);
-        //             cv::Point pt2(blobs[i].x + blobs[i].width, blobs[i].y + blobs[i].height);
-        //             cv::rectangle(frame, pt1, pt2, cv::Scalar(0, 255, 0), 2);
-
-        //             cv::Point pt3(blobs[i].xc, blobs[i].yc);
-        //             cv::Point pt4(blobs[i].xc + 5, blobs[i].yc + 5);
-        //             cv::rectangle(frame, pt3, pt4, cv::Scalar(0, 255, 0), 2);
-		// 		}
-
-		// 		vc_image_free(imageBlob);
-		// 	}
-
-		// 	// Libertar a memória dos blobs
-		// 	free(blobs);
-		// }
 
 		// Adicionar os textos das informações das frames
 		str = "RESOLUCAO: " + std::to_string(video.width) + "x" + std::to_string(video.height);
@@ -331,20 +307,6 @@ int main(void)
 		str = "N. DA FRAME: " + std::to_string(video.nframe);
 		cv::putText(frame, str, cv::Point(20, 100), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
 		cv::putText(frame, str, cv::Point(20, 100), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
-
-		/* DEBUG POSIÇÃO INICIO/FIM */
-		int start_pos = static_cast<int>(0.08 * video.height);
-    	int end_pos = static_cast<int>(0.90 * video.height);
-
-    	// Desenhar a linha na posição inicial
-    	cv::line(frame, cv::Point(0, start_pos), cv::Point(video.width, start_pos), cv::Scalar(255, 0, 0), 2);
-   		// Adicionar texto "Início"
-    	cv::putText(frame, "Início", cv::Point(10, start_pos - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-
-    	// Desenhar a linha na posição final
-    	cv::line(frame, cv::Point(0, end_pos), cv::Point(video.width, end_pos), cv::Scalar(255, 0, 0), 2);
-    	// Adicionar texto "Fim"
-    	cv::putText(frame, "Fim", cv::Point(10, end_pos - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
 		/* Exibe a frame */
 		cv::imshow("VC - VIDEO", frame);
