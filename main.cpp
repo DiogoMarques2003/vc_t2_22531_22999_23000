@@ -144,6 +144,9 @@ int main(void)
 		// Converter a imagem de BGR para RGB
 		vc_convert_bgr_to_rgb(imageOutput, imageRGB);
 
+		// Setar o found a 0
+		foundPixeis = 0;
+
 		// Segmentar a imagem para obter o corpo das resistências
 		vc_hsv_segmentation(imageRGB, imageSegmented, 30, 40, 30, 100, 45, 100, &foundPixeis);
 
