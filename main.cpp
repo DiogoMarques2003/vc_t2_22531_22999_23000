@@ -288,11 +288,13 @@ int main(void)
 
 						// Adicionar o texto com o valor da resistência
 						str = std::to_string(resistencia) + " Ohms +/-5%";
-						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
 
 						// Adicionar texto da posição da resistência
 						str = "X: " + std::to_string(blobs[i].x) + " Y: " + std::to_string(blobs[i].y);
-						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+						cv::putText(frame, str, cv::Point(blobs[i].x, blobs[i].y - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
 
 						// Denhar o centro de gravidade e o bounding box
 						vc_draw_center_of_gravity(frame.data, &blobs[i], video.width, video.height, 5);
