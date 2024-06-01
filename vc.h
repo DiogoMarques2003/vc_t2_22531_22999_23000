@@ -51,6 +51,9 @@ typedef struct {
     int smax;
     int vmin;
     int vmax;
+    int erosao;
+    int dilatacao;
+    int minBlobArea;
 } HSV;
 
 // Estrutura para salvar as cores entradas
@@ -58,6 +61,12 @@ typedef struct {
     int color;
     int x;
 } CoresEncontradas;
+
+//Estrutura para contar quantas resistencias tem de cada tipo
+typedef struct {
+    int potencia;
+    int count;
+} ResistenciasEncontradas;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //                    Macros
@@ -91,7 +100,7 @@ int vc_rgb_to_hsv(IVC *src, IVC *dst);
 
 // hmin,hmax = [0, 360]; smin,smax = [0, 100]; vmin,vmax = [0, 100]
 int vc_hsv_segmentation(IVC *src, IVC *dst, int hmin, int hmax, int smin,
-                        int smax, int vmin, int vmax);
+                        int smax, int vmin, int vmax, int *found);
 
 int vc_scale_gray_to_color_palette(IVC *src, IVC *dst);
 
@@ -120,8 +129,8 @@ int vc_binary_blob_info(IVC *src, OVC *blobs, int nblobs);
 int vc_blob_to_gray_scale(IVC *src, IVC *dst, int nlabels);
 int vc_blob_to_gray_rgb(IVC *src, IVC *dst, int nlabels);
 
-int vc_draw_center_of_gravity(IVC *img, OVC *blob, int comp);
-int vc_draw_bounding_box(IVC *img, OVC *blob);
+int vc_draw_center_of_gravity(unsigned char *data, OVC *blob, int width, int height, int comp);
+int vc_draw_bounding_box(unsigned char *data, OVC *blob, int width, int height);
 
 int vc_gray_histogram_show(IVC *src, IVC *dst);
 int vc_gray_histogram_equalization(IVC *src, IVC *dst);

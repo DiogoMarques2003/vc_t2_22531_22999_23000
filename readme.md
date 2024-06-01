@@ -22,3 +22,11 @@ Cores HSV:
 | Roxo     | 270°    | 320°    | 30%            | 100%           | 30%       | 100%      | ----- |
 | Cinza    | 75°      | 80°    | 8%             | 10%             | 17%       | 30%       | ----- |
 | Branco   | 0°      | 360°    | 0%             | 0%             | 100%      | 100%      | ----- |
+
+
+Tempos PC Diogo em boost:
+processo base sem areas: 265.812 segundos
+processo base com areas: 263.561 segundos
+processo base sem conversão para 3 canais: 246.046 segundos
+Reconhece resistencias, ainda sem otimizações: 228.72
+Código já com tudo finalizado: 235.951
