@@ -18,7 +18,7 @@ HSV hsv_values[10] = {
     {340, 14, 60, 90, 67, 100, 11, 11, 15}, // Vermelho -> 2
     {25, 26, 70, 75, 80, 85, -1, -1, -1},  // Laranja -> 3
     {64, 67, 100, 102, 100, 102, -1, -1, -1},  // Amarelo -> 4
-    {100, 165, 30, 100, 30, 100, 17, 17, 30}, // Verde -> 5
+    {100, 165, 30, 100, 30, 100, 19, 19, 31}, // Verde -> 5
     {165, 255, 15, 100, 35, 100, 5, 5, 10}, // Azul -> 6
     {270, 320, 30, 100, 30, 100, -1, -1, -1}, // Roxo -> 7
     {75, 80, 8, 10, 17, 30, -1, -1, -1},    // Cinza -> 8
@@ -115,6 +115,16 @@ int main(void)
 	IVC *imageClosed = vc_image_new(video.width, video.height, 1, 255);
 	IVC *imageBlobs = vc_image_new(video.width, video.height, 1, 255);
 	int foundPixeis = 0;
+	int countColors = 0;
+	CoresEncontradas colors[4];
+	// Limpar array de cores encontradas para garantir que não tem lixo
+	for (int i = 0; i < 4; i++) {
+		colors[i].color = INT_MAX;
+		colors[i].x = INT_MAX;
+	}
+
+	// Lista para armazenar as resistências encontradas
+	std::vector<ResistenciasEncontradas> resistenciasEncontradas;
 
 	int hsv_count = sizeof(hsv_values) / sizeof(HSV);
 
@@ -202,8 +212,12 @@ int main(void)
 					}
 
 					// Variáveis para guardar as cores encontradas para depois gerar o valor da resistência
-					int countColors = 0;
-					CoresEncontradas colors[4];
+					countColors = 0;
+					// Limpar array de cores encontradas para garantir que não tem lixo
+					for (int i = 0; i < 4; i++) {
+						colors[i].color = INT_MAX;
+						colors[i].x = INT_MAX;
+					}
 
 					// Percorrer as cores do HSV
 					for (int j = 0; j < hsv_count; j++) {
@@ -280,6 +294,29 @@ int main(void)
 						// Denhar o centro de gravidade e o bounding box
 						vc_draw_center_of_gravity(frame.data, &blobs[i], video.width, video.height, 5);
 						vc_draw_bounding_box(frame.data, &blobs[i], video.width, video.height);
+
+						// Validar se é a primeira vez que está a ser processada
+						if (blobs[i].y > 127 && blobs[i].y < 133) {
+							// Verificar se já existe uma resistência com o mesmo valor
+							int foundResistencia = 0;
+							for (auto& resistenciaEncontrada: resistenciasEncontradas) {
+								// Validar se é a mesma potencia
+								if (resistenciaEncontrada.potencia == resistencia) {
+									// Adicionar um ao contador
+									resistenciaEncontrada.count++;
+									foundResistencia = 1;
+									break;
+								}
+							}
+
+							// Se não encontrou a resistência, adicionar à lista
+							if (foundResistencia == 0) {
+								ResistenciasEncontradas resistenciaEncontrada;
+								resistenciaEncontrada.potencia = resistencia;
+								resistenciaEncontrada.count = 1;
+								resistenciasEncontradas.push_back(resistenciaEncontrada);
+							}
+						}
 					}
 
 					vc_image_free(imageBlob);
@@ -321,12 +358,32 @@ int main(void)
 	vc_image_free(imageClosed);
 	vc_image_free(imageBlobs);
 
+	// Criar um frame novo
+	cv::Mat resultadoFinal(video.height, video.width, CV_8UC3, cv::Scalar(0, 0, 0));
+
+	// Ordenar as resistências por ordem crescente
+	std::sort(resistenciasEncontradas.begin(), resistenciasEncontradas.end(), [](ResistenciasEncontradas &a, ResistenciasEncontradas &b) {
+		return a.potencia < b.potencia;
+	});
+
+	// Adicionar os textos das resistências encontradas
+	int y = 30;
+	for (auto& resistenciaEncontrada: resistenciasEncontradas) {
+		str = "Resistencia: " + std::to_string(resistenciaEncontrada.potencia) + " Ohms - Quantidade: " + std::to_string(resistenciaEncontrada.count);
+		cv::putText(resultadoFinal, str, cv::Point(20, y), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
+		y += 30;
+	}
+
+	// Exibir a frame com as resistências encontradas
+	cv::imshow("VC - VIDEO", resultadoFinal);
+
+	cv::waitKey(0);
+
 	/* Para o timer e exibe o tempo decorrido */
 	vc_timer();
 
 	/* Fecha a janela */
 	cv::destroyWindow("VC - VIDEO");
-
 	/* Fecha o ficheiro de v deo */
 	capture.release();
 

@@ -62,6 +62,12 @@ typedef struct {
     int x;
 } CoresEncontradas;
 
+//Estrutura para contar quantas resistencias tem de cada tipo
+typedef struct {
+    int potencia;
+    int count;
+} ResistenciasEncontradas;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //                    Macros
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
